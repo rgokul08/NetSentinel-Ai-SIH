@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.db
+
+# Node
+node_modules/
+frontend/dist/
+.vite/
+
+# Vercel
+.vercel/
+
+# Environment & local config
+.env
+.env.local
+
+# Runtime artifacts
+backend/dataset/uploads/
+backend/ml/models/
+*.joblib
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/

@@ -3,15 +3,16 @@ ML Inference, Forecasting, Anomaly, and XAI Service
 Wraps pre-trained models and dynamically computes predictions, forecasts, and feature attributions.
 """
 
-import os
-import sys
 from typing import Dict, Any, List
 import pandas as pd
 import numpy as np
 from datetime import datetime
 
-# Add ml folder to python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../ml")))
+# Make the ML modules (preprocessing, anomaly_detection, forecasting, xai) importable.
+# Resolves to backend/ml in every environment (local, Docker, Vercel).
+from app.paths import add_ml_to_path
+
+add_ml_to_path()
 
 from preprocessing import NetworkTrafficPreprocessor, ATTACK_CLASSES
 from anomaly_detection import NetworkAnomalyDetector

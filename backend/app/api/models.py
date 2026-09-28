@@ -3,7 +3,6 @@ ML Model Management, Retraining & Explainability API Endpoints
 """
 
 import os
-import sys
 from typing import Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -12,7 +11,11 @@ from app.models.models import MLModel, AuditLog, User
 from app.schemas.schemas import MLTrainRequest, MLModelMetricsOut
 from app.services.auth_service import get_current_user
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../ml")))
+# Make the ML modules importable (backend/ml in every environment).
+from app.paths import add_ml_to_path, get_dataset_dir, get_models_dir
+
+add_ml_to_path()
+
 from train import train_and_evaluate_model
 from xai import ExplainableAIEngine
 
@@ -35,8 +38,8 @@ def trigger_model_training(
     db: Session = Depends(get_db)
 ):
     """Triggers model training or retraining on dataset and updates metrics"""
-    sample_csv = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../dataset/sample_network_traffic.csv"))
-    models_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../ml/models"))
+    sample_csv = os.path.join(get_dataset_dir(), "sample_network_traffic.csv")
+    models_dir = get_models_dir()  # writable (falls back to /tmp on serverless)
     
     try:
         # Run training pipeline

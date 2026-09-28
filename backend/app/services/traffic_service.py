@@ -3,15 +3,17 @@ Traffic Management & Simulation Service
 Manages real-time traffic queries, database seeding, and dynamic live packet streams.
 """
 
-import sys
-import os
 import random
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../ml")))
+# Make the ML modules importable (backend/ml in every environment).
+from app.paths import add_ml_to_path
+
+add_ml_to_path()
+
 from demo_stream import generate_live_packet
 from app.models.models import NetworkTraffic, Alert, Anomaly, AttackPrediction, User, MLModel
 from app.services.auth_service import get_password_hash
