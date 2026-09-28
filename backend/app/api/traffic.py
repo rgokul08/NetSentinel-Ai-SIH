@@ -2,8 +2,6 @@
 Real-Time & Historical Network Traffic API Endpoints
 """
 
-import sys
-import os
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -12,7 +10,11 @@ from app.database.session import get_db
 from app.models.models import NetworkTraffic, Alert
 from app.schemas.schemas import TrafficFlowOut
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../ml")))
+# Make the ML modules importable (backend/ml in every environment).
+from app.paths import add_ml_to_path
+
+add_ml_to_path()
+
 from demo_stream import generate_live_packet
 
 router = APIRouter(prefix="/api/traffic", tags=["Traffic"])

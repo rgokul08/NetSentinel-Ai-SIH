@@ -17,7 +17,7 @@ export default function Login({ onLogin }) {
       onLogin(data.user)
     } catch (ex) {
       const d = ex.response?.data?.detail
-      setErr(typeof d === 'string' ? d : ex.response ? 'Login failed' : 'Cannot reach the backend on port 8000')
+      setErr(typeof d === 'string' ? d : ex.response ? 'Login failed' : 'Cannot reach the backend — please try again')
     } finally { setBusy(false) }
   }
 

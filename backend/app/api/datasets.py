@@ -11,11 +11,12 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.models.models import Dataset, User
 from app.services.auth_service import get_current_user
+from app.paths import get_dataset_dir, get_upload_dir
 
 router = APIRouter(prefix="/api/dataset", tags=["Datasets"])
 
-UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../dataset/uploads"))
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+# Writable upload directory (transparently falls back to /tmp on read-only serverless bundles)
+UPLOAD_DIR = get_upload_dir()
 
 REQUIRED_COLUMNS = [
     "source_port", "destination_port", "protocol",
@@ -78,7 +79,7 @@ def list_uploaded_datasets(db: Session = Depends(get_db)):
     datasets = db.query(Dataset).order_by(Dataset.created_at.desc()).all()
     
     # Also include default sample dataset
-    sample_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../dataset/sample_network_traffic.csv"))
+    sample_path = os.path.join(get_dataset_dir(), "sample_network_traffic.csv")
     default_dataset = {
         "id": 0,
         "filename": "sample_network_traffic.csv (System Default)",

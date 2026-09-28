@@ -102,26 +102,26 @@ D:\AI-Network-Attack-Forecasting/
 │   │   ├── services/             # Auth, ML, Traffic & Report services
 │   │   ├── database/             # PostgreSQL & SQLite session manager
 │   │   └── main.py               # FastAPI entry point
+│   ├── ml/                       # AI / ML Modeling Engine (self-contained in backend for Vercel)
+│   │   ├── preprocessing.py      # Scaling, one-hot encoding & feature engineering
+│   │   ├── train.py              # Model training & confusion matrix evaluation
+│   │   ├── anomaly_detection.py  # Isolation Forest anomaly detector
+│   │   ├── forecasting.py        # Time-series attack probability forecaster
+│   │   ├── xai.py                # Explainable AI & feature attribution
+│   │   └── demo_stream.py        # Dynamic traffic stream simulator
+│   ├── dataset/                  # Network Traffic Datasets
+│   │   ├── sample_network_traffic.csv # Realistic multi-class flow dataset
+│   │   └── generate_dataset.py   # Synthetic dataset generator
+│   ├── main.py                   # Vercel Services entrypoint (main:app)
 │   └── requirements.txt
-│
-├── ml/                           # AI / ML Modeling Engine
-│   ├── preprocessing.py          # Scaling, one-hot encoding & feature engineering
-│   ├── train.py                  # Model training & confusion matrix evaluation
-│   ├── anomaly_detection.py      # Isolation Forest anomaly detector
-│   ├── forecasting.py            # Time-series attack probability forecaster
-│   ├── xai.py                    # Explainable AI & feature attribution
-│   └── demo_stream.py            # Dynamic traffic stream simulator
-│
-├── dataset/                      # Network Traffic Datasets
-│   ├── sample_network_traffic.csv# Realistic multi-class flow dataset
-│   └── generate_dataset.py       # Synthetic dataset generator
 │
 ├── docs/                         # Project Documentation
 │   ├── README.md
 │   ├── SIH_PRESENTATION_GUIDE.md # Jury presentation & pitch walkthrough
-│   └── ARCHITECTURE.md           # System architecture design
+│   ├── ARCHITECTURE.md           # System architecture design
+│   └── VERCEL_DEPLOYMENT.md      # Vercel deployment guide
 │
 ├── run_project.bat               # Windows one-click launcher
 ├── docker-compose.yml            # Containerized deployment setup
-└── .env.example
+└── vercel.json                   # Vercel Services (frontend + backend) config
 ```
