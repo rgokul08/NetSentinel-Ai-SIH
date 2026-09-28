@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: chaintrace_db
+    restart: always
+    environment:
+      POSTGRES_USER: soc_admin
+      POSTGRES_PASSWORD: soc_password_9988
+      POSTGRES_DB: network_security
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: chaintrace_backend
+    restart: always
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://soc_admin:soc_password_9988@db:5432/network_security
+      - JWT_SECRET_KEY=sih2026_ai_network_attack_forecasting_soc_secret_998877
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./dataset:/dataset
+      - ./ml:/ml
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: chaintrace_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
