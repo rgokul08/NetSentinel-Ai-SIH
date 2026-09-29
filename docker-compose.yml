@@ -1,43 +1,118 @@
+# ===========================================================================
+# CyberForecast AI — local / demo stack
+#
+#   docker compose up --build              # db + backend + frontend
+#   docker compose --profile chain up      # ...plus a local EVM for on-chain anchoring
+#
+# Frontend  : http://localhost:3000  (nginx proxies /api and the WebSocket)
+# Backend   : http://localhost:8000/api/docs
+# Chain     : http://localhost:8545  (only with the "chain" profile)
+#
+# Demo logins (seeded on first boot):
+#   admin@cyberforecast.ai   / Admin@1234
+#   analyst@cyberforecast.ai / Analyst@1234
+#   viewer@cyberforecast.ai  / Viewer@1234
+# Change the DEMO_* variables below for anything beyond a local demo.
+# ===========================================================================
+
 services:
   db:
     image: postgres:15-alpine
-    container_name: chaintrace_db
-    restart: always
+    container_name: cyberforecast_db
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: soc_admin
-      POSTGRES_PASSWORD: soc_password_9988
-      POSTGRES_DB: network_security
+      POSTGRES_USER: cyberforecast
+      POSTGRES_PASSWORD: cyberforecast_local_only
+      POSTGRES_DB: cyberforecast
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cyberforecast -d cyberforecast"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: chaintrace_backend
-    restart: always
+    container_name: cyberforecast_backend
+    restart: unless-stopped
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      - DATABASE_URL=postgresql://soc_admin:soc_password_9988@db:5432/network_security
-      - JWT_SECRET_KEY=sih2026_ai_network_attack_forecasting_soc_secret_998877
+      APP_ENV: development
+      DEBUG: "false"
+      DATABASE_URL: postgresql://cyberforecast:cyberforecast_local_only@db:5432/cyberforecast
+      # Generate a real secret before exposing this stack: python -c "import secrets; print(secrets.token_urlsafe(64))"
+      JWT_SECRET_KEY: local-development-only-secret-change-me
+      ACCESS_TOKEN_EXPIRE_MINUTES: "480"
+      CORS_ALLOW_ALL: "false"
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      SEED_DEMO_DATA: "true"
+      SEED_TRAFFIC_RECORDS: "1800"
+      DEFAULT_CLASSIFIER: random_forest
+      SIMULATION_AUTOSTART: "false"
+      MAX_UPLOAD_MB: "25"
+      # --- optional on-chain anchoring (enable with: docker compose --profile chain up) ---
+      BLOCKCHAIN_ANCHOR_ENABLED: "false"
+      BLOCKCHAIN_RPC_URL: http://chain:8545
+      BLOCKCHAIN_CHAIN_ID: "31337"
+      BLOCKCHAIN_CONTRACT_ADDRESS: ""
+      # Well-known deterministic Ganache key — local chain only, never a funded wallet.
+      BLOCKCHAIN_PRIVATE_KEY: "0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app
+      # Persist trained model artifacts, generated reports and uploaded datasets.
+      - backend_models:/app/models
+      - backend_reports:/app/reports
+      - backend_uploads:/app/uploads
+      # Bind-mount the source for hot reload during development:
+      # - ./backend:/app
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health', timeout=5).status==200 else 1)"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: chaintrace_frontend
-    restart: always
+    container_name: cyberforecast_frontend
+    restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "3000:3000"
 
+  # Optional local EVM so the integrity ledger can anchor hashes on-chain.
+  # Start with: docker compose --profile chain up --build
+  # Then deploy the contract once (see blockchain/README.md):
+  #   cd blockchain && npm install && npm run compile:offline && npm run deploy:local
+  # and set BLOCKCHAIN_ANCHOR_ENABLED=true + BLOCKCHAIN_CONTRACT_ADDRESS above.
+  chain:
+    image: trufflesuite/ganache:v7.9.2
+    container_name: cyberforecast_chain
+    profiles: ["chain"]
+    restart: unless-stopped
+    command: >
+      --host 0.0.0.0 --port 8545
+      --chain.chainId 31337
+      --deterministic
+      --miner.blockGasLimit 30000000
+      --miner.blockTime 1
+    ports:
+      - "8545:8545"
+
 volumes:
   postgres_data:
+  backend_models:
+  backend_reports:
+  backend_uploads:

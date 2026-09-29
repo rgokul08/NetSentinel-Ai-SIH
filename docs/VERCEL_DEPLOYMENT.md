@@ -57,12 +57,24 @@ Routing rules (top level in `vercel.json`):
 
 ## Verify a deployment
 
-- `GET /` — React dashboard (login: `admin@soc.guard` / `Admin@1234`)
-- `GET /api/` — backend status JSON (`{"status": "ONLINE", ...}`)
-- `GET /api/docs` — interactive API documentation
-- Login, dashboard, traffic, detection, forecast, alerts and reports pages
-  all call the backend through the same-origin `/api` prefix — no CORS
-  configuration needed.
+- `GET /` — React dashboard
+- `GET /api/health` — public liveness JSON (`{"status": "online", ...}`)
+- `GET /api/docs` — interactive API documentation (98 routes)
+- Sign in with the seeded demo admin (`admin@cyberforecast.ai` / `Admin@1234`;
+  override via `DEMO_ADMIN_EMAIL` / `DEMO_ADMIN_PASSWORD`).
+- Every page calls the backend through the same-origin `/api` prefix — no CORS
+  configuration needed. Set `VITE_API_URL` only if you split the backend onto
+  Render/Railway/Fly (then also set `CORS_ORIGINS` on the backend).
+
+## Optional environment variables
+
+| Variable | Purpose |
+| --- | --- |
+| `DEMO_ADMIN_EMAIL` / `DEMO_ADMIN_PASSWORD` (+ analyst/viewer pairs) | Seeded demo accounts — change before any public demo |
+| `SEED_DEMO_DATA` (`false` disables) | Demo bootstrap: models, traffic, forecast, ledger genesis |
+| `SEED_TRAFFIC_RECORDS` | Volume of seeded flows (default 1800) |
+| `APPWRITE_*` | Optional Appwrite cloud backend with automatic SQL fallback |
+| `BLOCKCHAIN_ANCHOR_ENABLED`, `BLOCKCHAIN_RPC_URL`, `BLOCKCHAIN_CHAIN_ID`, `BLOCKCHAIN_CONTRACT_ADDRESS`, `BLOCKCHAIN_PRIVATE_KEY` | Optional EVM anchoring (Polygon Amoy); without them the local SHA-256 hash chain still protects integrity |
 
 ## Troubleshooting
 

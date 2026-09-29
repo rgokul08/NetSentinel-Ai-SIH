@@ -1,0 +1,28 @@
+{
+  "name": "cyberforecast-blockchain",
+  "version": "2.0.0",
+  "private": true,
+  "description": "On-chain integrity anchor for CyberForecast AI \u2014 SecurityEventRegistry smart contract, deployment and verification tooling.",
+  "license": "MIT",
+  "scripts": {
+    "compile": "hardhat compile",
+    "compile:offline": "node scripts/compile-solcjs.js",
+    "test": "hardhat test",
+    "test:offline": "npm run compile:offline && node scripts/test-contract.js",
+    "node": "hardhat node",
+    "node:offline": "ganache --port 8545 --chain.chainId 31337 --deterministic --miner.blockGasLimit 30000000",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost --no-compile",
+    "deploy:hardhat": "hardhat run scripts/deploy.js",
+    "deploy:amoy": "hardhat run scripts/deploy.js --network amoy --no-compile",
+    "record": "node scripts/record-hash.js",
+    "verify:events": "node scripts/verify-events.js",
+    "clean": "hardhat clean"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "dotenv": "^16.4.5",
+    "ganache": "^7.9.2",
+    "hardhat": "^2.22.10",
+    "solc": "^0.8.24"
+  }
+}
