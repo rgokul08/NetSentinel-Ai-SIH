@@ -62,14 +62,17 @@ def record_event(
             "chain_position": position,
             "payload": stored_payload,
             "related_id": related_id,
-            "anchor_mode": "evm" if (do_anchor and anchor.configured) else "local",
+            "anchor_mode": "evm" if (do_anchor and anchor.configured and not is_tamper_demo) else "local",
             "verification_status": "verified",
             "recorded_by": recorded_by,
             "created_at": now,
             "is_tamper_demo": bool(is_tamper_demo),
         }
 
-        if do_anchor and anchor.configured:
+        # A deliberately broken tamper-demo entry must never be blessed on-chain:
+        # the whole point of the demonstration is that its stored payload no
+        # longer reproduces the recorded hash.
+        if do_anchor and anchor.configured and not is_tamper_demo:
             result = anchor.record(event_id, event_hash, event_type)
             if result.get("anchored"):
                 record.update({
@@ -321,7 +324,8 @@ def retry_pending(limit: int = 10) -> Dict[str, Any]:
         return {"attempted": 0, "anchored": 0, "message": "EVM anchoring is not configured."}
     store = get_store()
     rows, _ = store.list("blockchain_events", filters={"verification_status": "pending"},
-                         order_by="chain_position", limit=limit)
+                         order_by="chain_position", limit=limit * 2)
+    rows = [row for row in rows if not row.get("is_tamper_demo")][:limit]
     anchored = 0
     for row in rows:
         result = anchor.record(row.get("id"), row.get("event_hash") or "", row.get("event_type") or "security_event")

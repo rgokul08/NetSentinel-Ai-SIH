@@ -69,6 +69,30 @@ def test_breaking_the_chain_link_is_detected(store):
     assert ledger.verify_event(events[1]["id"])["match"] is False
 
 
+def test_tamper_demo_entries_are_never_anchored(store, monkeypatch):
+    """Even with an EVM anchor configured, a known-corrupt demo entry must not
+    be written to the chain (and neither via retry-pending)."""
+    calls = []
+    class FakeAnchor:
+        configured = True
+        def record(self, event_id, event_hash, event_type):
+            calls.append(event_id)
+            return {"anchored": True, "tx_hash": "0xdeadbeef", "block_number": 1,
+                    "chain_id": 31337, "contract_address": "0xabc", "recorder_address": "0xdef"}
+    monkeypatch.setattr(ledger, "anchor", FakeAnchor())
+
+    normal = ledger.record_event("alert_created", {"alert_id": "a1"}, do_anchor=True)
+    demo = ledger.record_event("alert_created", {"alert_id": "a2"}, do_anchor=True, is_tamper_demo=True)
+
+    assert calls == [normal["id"]]                      # only the honest entry was anchored
+    assert demo["anchor_mode"] == "local"
+    assert demo["tx_hash"] is None
+
+    retry = ledger.retry_pending()
+    assert calls == [normal["id"]]                      # retry skips tamper demos too
+    assert retry["attempted"] == 0
+
+
 def test_tamper_demo_entries_are_flagged_and_fail_verification(store):
     event = ledger.record_event("alert_created", {"alert_id": "demo", "severity": "critical", "risk_score": 0.9},
                                 do_anchor=False, is_tamper_demo=True)
