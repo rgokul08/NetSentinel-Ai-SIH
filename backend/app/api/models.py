@@ -1,86 +1,142 @@
-"""
-ML Model Management, Retraining & Explainability API Endpoints
-"""
+"""ML model registry endpoints (train, validate, activate, compare, upload)."""
 
-import os
-from typing import Dict, Any, List
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from app.database.session import get_db
-from app.models.models import MLModel, AuditLog, User
-from app.schemas.schemas import MLTrainRequest, MLModelMetricsOut
-from app.services.auth_service import get_current_user
+from __future__ import annotations
 
-# Make the ML modules importable (backend/ml in every environment).
-from app.paths import add_ml_to_path, get_dataset_dir, get_models_dir
+from typing import Any, Dict, Optional
 
-add_ml_to_path()
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 
-from train import train_and_evaluate_model
-from xai import ExplainableAIEngine
+from app.api.common import Paging, envelope, paging_params, service_error
+from app.ml.algorithms import catalogue
+from app.schemas.schemas import ActivateModelRequest, CompareModelsRequest, TrainModelRequest
+from app.security.deps import client_ip, get_current_user, require_capability
+from app.security.ratelimit import limiter
+from app.services import audit_service, model_service
+from app.storage import get_store
 
-router = APIRouter(prefix="/api/model", tags=["ML Models"])
+router = APIRouter(prefix="/models", tags=["Models"])
 
-@router.get("/metrics", response_model=MLModelMetricsOut)
-def get_model_metrics(db: Session = Depends(get_db)):
-    """Retrieves current model evaluation metrics, confusion matrix, and feature importances"""
-    model = db.query(MLModel).filter(MLModel.is_active == True).first()
-    if not model:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active ML model found"
-        )
-    return model
+
+@router.get("/algorithms")
+def algorithms(task: Optional[str] = Query(None), user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+    return {"items": catalogue(task), "default": "random_forest"}
+
+
+@router.get("/registry")
+def registry(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+    return model_service.registry_status()
+
+
+@router.get("")
+def list_models(paging: Paging = Depends(paging_params), task: Optional[str] = Query(None),
+                user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+    rows, total = model_service.list_models(task=task, limit=paging.limit, offset=paging.offset)
+    return envelope(rows, total, paging)
+
 
 @router.post("/train")
-def trigger_model_training(
-    req: MLTrainRequest,
-    db: Session = Depends(get_db)
-):
-    """Triggers model training or retraining on dataset and updates metrics"""
-    sample_csv = os.path.join(get_dataset_dir(), "sample_network_traffic.csv")
-    models_dir = get_models_dir()  # writable (falls back to /tmp on serverless)
-    
+@limiter.limit("6/minute")
+def train_model(payload: TrainModelRequest, request: Request,
+                user: Dict[str, Any] = Depends(require_capability("models.train"))) -> Dict[str, Any]:
     try:
-        # Run training pipeline
-        results = train_and_evaluate_model(sample_csv, models_dir)
-        
-        # Update or create model record in database
-        model = db.query(MLModel).first()
-        if not model:
-            model = MLModel(name="Random Forest Attack Classifier", model_type=req.model_type)
-            db.add(model)
-            
-        model.accuracy = results["accuracy"]
-        model.precision_score = results["precision"]
-        model.recall_score = results["recall"]
-        model.f1_score = results["f1_score"]
-        model.confusion_matrix = results["confusion_matrix"]
-        model.feature_importance = results["feature_importance"]
-        model.version = f"1.{int(model.version.split('.')[1]) + 1}.0" if "." in model.version else "1.3.0"
-        
-        db.commit()
-        db.refresh(model)
-
-        return {
-            "status": "SUCCESS",
-            "message": "Model trained and deployed successfully",
-            "metrics": results
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Training failed: {str(e)}"
+        result = model_service.train(
+            algorithm=payload.algorithm, dataset_id=payload.dataset_id, rows=payload.rows,
+            contamination=payload.contamination, user=user, train_anomaly=payload.train_anomaly,
         )
+        if payload.activate:
+            for record in result.get("trained", []):
+                try:
+                    activation = model_service.activate(record["id"], user=user, dataset_id=payload.dataset_id)
+                    record["activation"] = {"activated": True, "validation": activation.get("validation")}
+                except Exception as exc:
+                    record["activation"] = {"activated": False, "reason": str(exc)}
+    except Exception as exc:
+        audit_service.log("model.train_failed", category="model", user=user, outcome="failure",
+                          metadata={"algorithm": payload.algorithm, "reason": str(exc)[:200]},
+                          ip_address=client_ip(request))
+        raise service_error(exc, default_status=500)
+    audit_service.log("model.trained", category="model", user=user, resource="model",
+                      metadata={"algorithm": payload.algorithm, "rows": result.get("training_rows"),
+                                "models": [r["id"] for r in result.get("trained", [])]},
+                      ip_address=client_ip(request))
+    return result
 
-@router.get("/explain")
-def get_global_feature_importance():
-    """Returns global explainable AI feature ranking"""
-    xai = ExplainableAIEngine()
-    return {
-        "algorithm": "SHAP Proxy & Tree-based Mean Gini Impurity Reduction",
-        "global_importance": [
-            {"feature": k, "importance_percent": round(v * 100, 1)}
-            for k, v in xai.global_feature_importance.items()
-        ]
-    }
+
+@router.post("/upload")
+@limiter.limit("6/minute")
+async def upload_model(request: Request, file: UploadFile = File(...), name: Optional[str] = Query(None),
+                       user: Dict[str, Any] = Depends(require_capability("models.upload"))) -> Dict[str, Any]:
+    content = await file.read()
+    try:
+        record = model_service.upload_bundle(content, file.filename or "model.joblib", name=name, user=user)
+    except Exception as exc:
+        raise service_error(exc)
+    audit_service.log("model.uploaded", category="model", user=user, resource="model", resource_id=record["id"],
+                      metadata={"filename": file.filename, "algorithm": record.get("algorithm")},
+                      ip_address=client_ip(request))
+    return record
+
+
+@router.post("/compare")
+def compare_models(payload: CompareModelsRequest, user: Dict[str, Any] = Depends(require_capability("models.view"))) -> Dict[str, Any]:
+    try:
+        return model_service.compare(payload.model_ids)
+    except Exception as exc:
+        raise service_error(exc)
+
+
+@router.get("/{model_id}")
+def get_model(model_id: str, user: Dict[str, Any] = Depends(require_capability("models.view"))) -> Dict[str, Any]:
+    record = model_service.get_model(model_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Model not found.")
+    return record
+
+
+@router.get("/{model_id}/validate")
+def validate_model(model_id: str, dataset_id: Optional[str] = Query(None),
+                   user: Dict[str, Any] = Depends(require_capability("models.view"))) -> Dict[str, Any]:
+    try:
+        return model_service.validate(model_id, dataset_id)
+    except Exception as exc:
+        raise service_error(exc)
+
+
+@router.post("/{model_id}/activate")
+def activate_model(model_id: str, payload: ActivateModelRequest, request: Request,
+                   user: Dict[str, Any] = Depends(require_capability("models.activate"))) -> Dict[str, Any]:
+    try:
+        result = model_service.activate(model_id, user=user, dataset_id=payload.dataset_id, force=payload.force)
+    except Exception as exc:
+        audit_service.log("model.activation_failed", category="model", user=user, outcome="failure",
+                          metadata={"model_id": model_id, "reason": str(exc)[:200]}, ip_address=client_ip(request))
+        raise service_error(exc, default_status=409)
+    audit_service.log("model.activated", category="model", user=user, resource="model", resource_id=model_id,
+                      metadata={"validation": result.get("validation", {}).get("accuracy")},
+                      ip_address=client_ip(request))
+    return result
+
+
+@router.post("/{model_id}/deactivate")
+def deactivate_model(model_id: str, request: Request,
+                     user: Dict[str, Any] = Depends(require_capability("models.activate"))) -> Dict[str, Any]:
+    updated = model_service.deactivate(model_id, user=user)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Model not found.")
+    audit_service.log("model.deactivated", category="model", user=user, resource="model", resource_id=model_id,
+                      ip_address=client_ip(request))
+    return updated
+
+
+@router.delete("/{model_id}")
+def delete_model(model_id: str, request: Request,
+                 user: Dict[str, Any] = Depends(require_capability("models.activate"))) -> Dict[str, Any]:
+    try:
+        deleted = model_service.delete_model(model_id)
+    except Exception as exc:
+        raise service_error(exc, default_status=409)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Model not found.")
+    audit_service.log("model.deleted", category="model", user=user, resource="model", resource_id=model_id,
+                      ip_address=client_ip(request))
+    return {"ok": True, "deleted": model_id}

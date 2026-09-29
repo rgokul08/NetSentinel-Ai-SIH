@@ -26,3 +26,19 @@ backend/ml/models/
 .DS_Store
 .idea/
 .vscode/
+
+# CyberForecast AI runtime artifacts
+backend/data/
+backend/uploads/
+backend/reports/
+backend/models/*.joblib
+node_modules/
+.vite/
+*.local
+blockchain/artifacts/
+blockchain/cache/
+blockchain/typechain-types/
+
+# Local chain deployment state (chain-specific files such as amoy.json are committed)
+blockchain/deployments/localhost.json
+blockchain/deployments/hardhat.json

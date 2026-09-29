@@ -1,0 +1,67 @@
+# Render blueprint for the CyberForecast AI backend.
+# Deploy: Render Dashboard -> New -> Blueprint -> point at this repository.
+# The Vercel frontend (see vercel.json / docs/VERCEL_DEPLOYMENT.md) then sets
+#   VITE_API_URL=https://<this-service>.onrender.com/api
+#
+# A free-tier web service boots from a cold start in ~30s; the healthcheck
+# below keeps it awake only while traffic arrives (no keep-alive pings needed
+# for a hackathon demo, but the DB is persistent).
+
+services:
+  - type: web
+    name: cyberforecast-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    region: singapore            # closest region to India on Render's free tier
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: CORS_ALLOW_ALL
+        value: "false"
+      # After the first deploy, set this to your frontend origin, e.g.
+      # https://cyberforecast.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
+      # Generate a long random value before deploying:
+      # python -c "import secrets; print(secrets.token_urlsafe(64))"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "480"
+      # Free tier has no persistent disk -> use Render's Postgres for real data.
+      # Create a Postgres instance and link it, or paste an external Neon URL.
+      - key: DATABASE_URL
+        sync: false
+      # Demo seeding gives judges data on first boot. Set to false against a
+      # production database.
+      - key: SEED_DEMO_DATA
+        value: "true"
+      - key: SEED_TRAFFIC_RECORDS
+        value: "1800"
+      # --- optional blockchain anchoring (Polygon Amoy testnet) ---
+      - key: BLOCKCHAIN_ANCHOR_ENABLED
+        value: "false"
+      - key: BLOCKCHAIN_RPC_URL
+        sync: false
+      - key: BLOCKCHAIN_CHAIN_ID
+        value: "80002"
+      - key: BLOCKCHAIN_CONTRACT_ADDRESS
+        sync: false
+      # Throwaway testnet key only — never a funded wallet.
+      - key: BLOCKCHAIN_PRIVATE_KEY
+        sync: false
+
+  # Optional persistent Postgres (uncomment and link DATABASE_URL above).
+  # - type: pgsql
+  #   name: cyberforecast-db
+  #   plan: free
+  #   region: singapore

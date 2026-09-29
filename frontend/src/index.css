@@ -2,10 +2,247 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(6, 182, 212, 0.10), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(168, 85, 247, 0.08), transparent 55%),
+    #070b12;
+  background-attachment: fixed;
+}
+
+/* --- scrollbars ---------------------------------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #243449 transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #243449;
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #33455e;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 @layer components {
-  .card { @apply bg-soc-card border border-soc-border rounded-xl p-4; }
-  .btn { @apply px-3 py-2 rounded-lg bg-soc-accent text-slate-950 font-semibold text-sm hover:bg-soc-cyan disabled:opacity-50; }
-  .input { @apply w-full bg-soc-bg border border-soc-borderLight rounded-lg px-3 py-2 text-sm outline-none focus:border-soc-accent; }
-  .th { @apply text-left text-xs uppercase text-slate-400 font-medium py-2 px-2; }
-  .td { @apply py-2 px-2 text-sm border-t border-soc-border; }
+  /* surfaces */
+  .card {
+    @apply rounded-xl border border-slate-800/80 bg-slate-900/50 backdrop-blur-sm shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset];
+  }
+  .card-hover {
+    @apply transition-colors hover:border-slate-700 hover:bg-slate-900/70;
+  }
+  .panel-title {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400;
+  }
+  .section-title {
+    @apply text-sm font-semibold text-slate-200;
+  }
+  .muted {
+    @apply text-xs text-slate-400;
+  }
+  .mono {
+    @apply font-mono text-[11px] tracking-tight;
+  }
+
+  /* buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold
+           transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50
+           focus:outline-none focus:ring-2 focus:ring-cyan-500/40;
+  }
+  .btn-primary {
+    @apply btn bg-cyan-500/90 text-slate-950 hover:bg-cyan-400 shadow-[0_0_20px_-6px_rgba(34,211,238,0.7)];
+  }
+  .btn-secondary {
+    @apply btn border border-slate-700 bg-slate-800/60 text-slate-200 hover:border-slate-600 hover:bg-slate-800;
+  }
+  .btn-ghost {
+    @apply btn text-slate-300 hover:bg-slate-800/70 hover:text-white;
+  }
+  .btn-danger {
+    @apply btn border border-rose-500/40 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20;
+  }
+  .btn-success {
+    @apply btn border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20;
+  }
+  .btn-sm {
+    @apply px-2.5 py-1.5 text-[11px];
+  }
+  .btn-xs {
+    @apply px-2 py-1 text-[10px];
+  }
+
+  /* form controls */
+  .input {
+    @apply w-full rounded-lg border border-slate-700/80 bg-slate-950/60 px-3 py-2 text-xs text-slate-100
+           placeholder:text-slate-500 focus:border-cyan-500/70 focus:outline-none focus:ring-1 focus:ring-cyan-500/40
+           disabled:opacity-50;
+  }
+  .label {
+    @apply mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-400;
+  }
+  .select {
+    @apply input appearance-none bg-[length:12px] pr-8;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+  }
+
+  /* badges */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide;
+  }
+
+  /* table */
+  .table {
+    @apply w-full border-collapse text-left text-xs;
+  }
+  .table thead th {
+    @apply sticky top-0 z-10 border-b border-slate-800 bg-slate-900/95 px-3 py-2 text-[10px] font-semibold
+           uppercase tracking-[0.1em] text-slate-400 backdrop-blur;
+  }
+  .table tbody td {
+    @apply border-b border-slate-800/60 px-3 py-2 text-slate-300;
+  }
+  .table tbody tr:hover td {
+    @apply bg-slate-800/30;
+  }
+
+  /* nav */
+  .nav-link {
+    @apply flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-400
+           transition-colors hover:bg-slate-800/60 hover:text-slate-100;
+  }
+  .nav-link-active {
+    @apply bg-cyan-500/10 text-cyan-300 shadow-[inset_2px_0_0_0_rgba(34,211,238,0.9)];
+  }
+  .nav-group {
+    @apply px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600;
+  }
+}
+
+@layer utilities {
+  .grid-lines {
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .text-glow {
+    text-shadow: 0 0 18px rgba(34, 211, 238, 0.45);
+  }
+  .animate-in-fast {
+    animation: fade-up 0.22s ease-out both;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sweep {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.radar-sweep {
+  animation: sweep 4s linear infinite;
+  transform-origin: center;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+.flow-dash {
+  stroke-dasharray: 6 10;
+  animation: dash 12s linear infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+.pulse-ring {
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+/* recharts polish */
+.recharts-cartesian-axis-tick text {
+  font-size: 10px;
+  fill: #64748b;
+}
+.recharts-tooltip-wrapper {
+  outline: none;
+}
+.recharts-default-tooltip {
+  border-radius: 10px !important;
+  border: 1px solid #1e293b !important;
+  background: rgba(2, 6, 23, 0.96) !important;
+}
+
+/* ---------------------------------------------------------------------------
+   Interface preferences (see hooks/usePreferences.js)
+   `.reduce-motion` and `.density-compact` are toggled on <html> at runtime.
+--------------------------------------------------------------------------- */
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+html.reduce-motion .pulse-ring,
+html.reduce-motion .animate-ping {
+  display: none !important;
+}
+
+html.density-compact .table thead th {
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
+}
+html.density-compact .table tbody td {
+  padding-top: 0.28rem;
+  padding-bottom: 0.28rem;
+}
+html.density-compact .card-body {
+  padding: 0.75rem;
 }
