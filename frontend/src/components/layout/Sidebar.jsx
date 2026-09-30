@@ -64,9 +64,9 @@ export default function Sidebar({ open, onClose }) {
           <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-2.5 py-2">
             <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               <Lock size={10} className="text-emerald-400" />
-              Signed in as
+              Operating as
             </p>
-            <p className="mt-1 truncate text-xs font-medium text-slate-200">{user?.name || user?.email}</p>
+            <p className="mt-1 truncate text-xs font-medium text-slate-200">{user?.name || user?.email || 'Operator'}</p>
             <p className="mono mt-0.5 flex items-center gap-1 text-[10px] uppercase tracking-wide text-cyan-400/90">
               <Zap size={9} /> {user?.role}
             </p>

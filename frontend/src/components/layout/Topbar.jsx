@@ -1,6 +1,6 @@
-import { ChevronDown, LogOut, Menu, Radio, RefreshCw, UserCog, Wifi, WifiOff } from 'lucide-react'
+import { ChevronDown, Menu, Radio, RefreshCw, UserCog, Wifi, WifiOff } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useRealtime } from '../../context/RealtimeContext'
 import { trafficApi } from '../../services/endpoints'
@@ -37,9 +37,8 @@ function useLivePosture() {
 }
 
 export default function Topbar({ onMenu }) {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const { status, connected, messageCount } = useRealtime()
-  const navigate = useNavigate()
   const location = useLocation()
   const { posture, updatedAt } = useLivePosture()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -112,7 +111,7 @@ export default function Topbar({ onMenu }) {
             <span className="hidden sm:inline">{connected ? 'Live' : status === 'connecting' ? 'Connecting' : 'Offline'}</span>
           </span>
 
-          {/* account menu */}
+          {/* operator menu - no login in this deployment, so no sign-in/sign-out */}
           <div className="relative" ref={menuRef}>
             <button
               type="button"
@@ -120,14 +119,14 @@ export default function Topbar({ onMenu }) {
               className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-left transition hover:border-slate-700"
             >
               <span className="flex h-6 w-6 items-center justify-center rounded-md bg-cyan-500/15 text-[10px] font-bold text-cyan-300">
-                {String(user?.name || user?.email || '?')
+                {String(user?.name || user?.email || 'OP')
                   .split(/\s+/)
                   .slice(0, 2)
                   .map((part) => part[0]?.toUpperCase())
                   .join('')}
               </span>
               <span className="hidden leading-tight sm:block">
-                <span className="block max-w-[120px] truncate text-[11px] font-semibold text-slate-200">{user?.name || 'Analyst'}</span>
+                <span className="block max-w-[120px] truncate text-[11px] font-semibold text-slate-200">{user?.name || 'Operator'}</span>
                 <span className="mono block text-[9px] uppercase tracking-wide text-slate-500">{user?.role}</span>
               </span>
               <ChevronDown size={13} className="text-slate-500" />
@@ -157,17 +156,6 @@ export default function Topbar({ onMenu }) {
                   >
                     <RefreshCw size={13} /> Admin console
                   </Link>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false)
-                      logout()
-                      navigate('/login', { replace: true })
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-rose-300 transition hover:bg-rose-500/10"
-                  >
-                    <LogOut size={13} /> Sign out
-                  </button>
                 </div>
               </div>
             ) : null}

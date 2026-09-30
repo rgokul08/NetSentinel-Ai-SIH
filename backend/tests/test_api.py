@@ -70,8 +70,9 @@ def test_health_and_config_are_public(client):
     assert "password" not in {key.lower() for key in body}
 
 
-def test_detailed_health_requires_authentication(client, tokens):
-    assert client.get("/api/health/detailed").status_code == 401
+def test_detailed_health_is_open_without_login(client, tokens):
+    # No-login mode: the detailed health endpoint is reachable anonymously too.
+    assert client.get("/api/health/detailed").status_code == 200
     assert client.get("/api/health/detailed", headers=auth(tokens["viewer"])).status_code == 200
 
 
@@ -86,15 +87,26 @@ def test_openapi_is_served_under_the_api_prefix(client):
 
 
 # ------------------------------------------------------------------ auth + RBAC
-def test_protected_routes_require_a_token(client):
-    for path in ("/api/analytics/overview", "/api/alerts", "/api/admin/users", "/api/blockchain/status"):
-        assert client.get(path).status_code == 401, path
+def test_anonymous_users_have_full_access(client):
+    """No-login mode: an anonymous caller (no token) is the synthetic full-access
+    operator, so every endpoint - including admin-only ones - answers 200."""
+    for path in ("/api/analytics/overview", "/api/analytics/dashboard", "/api/analytics/top-entities",
+                 "/api/alerts", "/api/traffic/live", "/api/forecast/options",
+                 "/api/admin/users", "/api/admin/stats", "/api/audit-logs", "/api/blockchain/status"):
+        response = client.get(path)
+        assert response.status_code == 200, f"{path} -> {response.status_code} {response.text[:200]}"
 
 
 def test_invalid_tokens_are_rejected(client):
-    for header in ("Bearer not-a-token", "Bearer a.b.c", "Token abc", ""):
+    # A supplied Bearer token that cannot be decoded is still rejected...
+    for header in ("Bearer not-a-token", "Bearer a.b.c"):
         response = client.get("/api/auth/me", headers={"Authorization": header})
         assert response.status_code == 401, header
+    # ...while a request carrying no credentials resolves to the anonymous
+    # full-access operator (no-login mode).
+    anonymous = client.get("/api/auth/me")
+    assert anonymous.status_code == 200
+    assert anonymous.json()["role"] == "admin"
 
 
 def test_login_rejects_bad_credentials(client, accounts):

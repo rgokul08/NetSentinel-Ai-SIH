@@ -48,7 +48,7 @@ export function RealtimeProvider({ children }) {
   }, [])
 
   useEffect(() => {
-    if (!isAuthenticated || !token) {
+    if (!isAuthenticated) {
       setStatus('idle')
       return undefined
     }

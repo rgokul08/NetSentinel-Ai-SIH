@@ -40,7 +40,12 @@ def top_entities(window: str = Query("24h"), limit: int = Query(10, ge=3, le=50)
 
 @router.get("/dashboard")
 def dashboard(window: str = Query("24h"), user: Dict[str, Any] = Depends(require_capability("analytics.view"))) -> Dict[str, Any]:
-    """Single call that feeds the whole SOC dashboard."""
+    """Single call that feeds the whole SOC dashboard.
+
+    Readable without a session in no-login mode: `get_current_user` resolves an
+    anonymous caller to the full-access operator, so the landing dashboard works
+    for every visitor.
+    """
     overview_payload = analytics_service.overview(window)
     try:
         forecast = forecast_service.latest_run()

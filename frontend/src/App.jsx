@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import { ShieldAlert } from 'lucide-react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { RealtimeProvider } from './context/RealtimeContext'
@@ -8,7 +8,6 @@ import AppLayout from './components/layout/AppLayout'
 import { Button, LoadingState } from './components/ui'
 
 /* Pages are code-split so the initial bundle stays small. */
-const Login = lazy(() => import('./pages/Login'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Analytics = lazy(() => import('./pages/Analytics'))
@@ -32,19 +31,11 @@ function PageFallback() {
   return <LoadingState label="Loading workspace…" className="py-24" />
 }
 
-/** Redirects unauthenticated visitors to /login, remembering where they came from. */
-function RequireAuth({ children }) {
-  const { isAuthenticated, initializing } = useAuth()
-  const location = useLocation()
-
-  if (initializing) return <LoadingState label="Restoring session…" className="py-24" />
-  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location.pathname }} />
-  return children
-}
-
 /**
  * Capability gate. Rather than silently hiding a page (which looks broken), it
  * renders an explicit "not permitted" panel - the API enforces the same rule.
+ * In the default no-login mode the operator holds every capability, so this is
+ * only reached by a real, lower-privileged signed-in session.
  */
 function RequireCapability({ capability, title, children }) {
   const { can, role } = useAuth()
@@ -74,6 +65,7 @@ function Workspace() {
     <RealtimeProvider>
       <Routes>
         <Route element={<AppLayout />}>
+          {/* No-login mode: every page is directly reachable - no auth gate. */}
           <Route index element={<Dashboard />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="timeline" element={<Timeline />} />
@@ -124,16 +116,9 @@ export default function App() {
       <AuthProvider>
         <Suspense fallback={<PageFallback />}>
           <Routes>
-            <Route path="/login" element={<Login />} />
+            {/* Admin-issued password resets land here; there is no sign-in page. */}
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route
-              path="/*"
-              element={
-                <RequireAuth>
-                  <Workspace />
-                </RequireAuth>
-              }
-            />
+            <Route path="/*" element={<Workspace />} />
           </Routes>
         </Suspense>
       </AuthProvider>
