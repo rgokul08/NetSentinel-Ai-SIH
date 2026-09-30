@@ -8,7 +8,6 @@ import AppLayout from './components/layout/AppLayout'
 import { Button, LoadingState } from './components/ui'
 
 /* Pages are code-split so the initial bundle stays small. */
-const Login = lazy(() => import('./pages/Login'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Analytics = lazy(() => import('./pages/Analytics'))
@@ -117,7 +116,7 @@ export default function App() {
       <AuthProvider>
         <Suspense fallback={<PageFallback />}>
           <Routes>
-            <Route path="/login" element={<Login />} />
+            {/* Admin-issued password resets land here; there is no sign-in page. */}
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/*" element={<Workspace />} />
           </Routes>

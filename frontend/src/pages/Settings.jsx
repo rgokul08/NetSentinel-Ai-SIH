@@ -6,7 +6,6 @@ import {
   Copy,
   Eye,
   KeyRound,
-  LogOut,
   Monitor,
   Palette,
   QrCode,
@@ -28,7 +27,6 @@ import {
   Button,
   Card,
   Checkbox,
-  ConfirmDialog,
   ErrorState,
   Field,
   Input,
@@ -45,14 +43,13 @@ import { ROLE_TONES } from '../utils/theme'
 const AVATAR_COLORS = ['#22d3ee', '#818cf8', '#34d399', '#f472b6', '#fbbf24', '#60a5fa', '#f87171', '#a3e635']
 
 export default function Settings() {
-  const { user, updateUser, logout } = useAuth()
+  const { user, updateUser } = useAuth()
   const toast = useToast()
   const { prefs, setPreference, resetPreferences } = usePreferences()
 
   const [profile, setProfile] = useState({ name: user?.name || '', color: user?.avatar_color || AVATAR_COLORS[0] })
   const [password, setPassword] = useState({ current: '', next: '', confirm: '' })
   const [showPassword, setShowPassword] = useState(false)
-  const [signOutOpen, setSignOutOpen] = useState(false)
 
   const me = useApi(() => authApi.me(), [])
   const roles = useApi(() => authApi.roles(), [])
@@ -404,25 +401,6 @@ export default function Settings() {
           </div>
         )}
       </Card>
-
-      <Card title="Session" subtitle="Access tokens are stateless JWTs signed by the backend" icon={LogOut}>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="danger" icon={LogOut} onClick={() => setSignOutOpen(true)}>Sign out</Button>
-          <p className="muted max-w-xl">
-            Signing out discards the token stored in this browser and writes an <span className="mono text-slate-400">auth.logout</span> audit entry.
-            Because JWTs are stateless, an already-issued token stays valid until it expires; administrators can disable an account immediately from the admin console.
-          </p>
-        </div>
-      </Card>
-
-      <ConfirmDialog
-        open={signOutOpen}
-        onClose={() => setSignOutOpen(false)}
-        onConfirm={async () => { setSignOutOpen(false); await logout() }}
-        title="Sign out of CyberForecast AI?"
-        confirmLabel="Sign out"
-        message="Your local token will be discarded. You can sign in again with your credentials (plus an authenticator code if MFA is enabled)."
-      />
     </div>
   )
 }

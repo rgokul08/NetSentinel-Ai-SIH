@@ -18,14 +18,14 @@ export default function ResetPassword() {
   const submit = async (event) => {
     event.preventDefault()
     setError(null)
-    if (!token) return setError({ message: 'A reset token is required. Request one from the sign-in page.' })
+    if (!token) return setError({ message: 'A reset token is required. Request one from an administrator.' })
     if (password.length < 8) return setError({ message: 'The new password must be at least 8 characters long.' })
     if (password !== confirm) return setError({ message: 'The two passwords do not match.' })
     setBusy(true)
     try {
       await authApi.resetPassword(token.trim(), password)
-      toast.success('Password updated', 'Sign in with your new password.')
-      navigate('/login', { replace: true })
+      toast.success('Password updated', 'Your new password is now active.')
+      navigate('/', { replace: true })
     } catch (failure) {
       setError(failure)
     } finally {
@@ -68,8 +68,8 @@ export default function ResetPassword() {
           <Button type="submit" variant="primary" className="w-full" loading={busy}>
             Update password
           </Button>
-          <Link to="/login" className="muted mx-auto flex items-center justify-center gap-1.5 transition hover:text-cyan-300">
-            <ArrowLeft size={12} /> Back to sign in
+          <Link to="/" className="muted mx-auto flex items-center justify-center gap-1.5 transition hover:text-cyan-300">
+            <ArrowLeft size={12} /> Back to dashboard
           </Link>
         </form>
       </div>

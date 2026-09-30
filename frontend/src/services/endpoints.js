@@ -8,13 +8,10 @@ import { del, download, get, patch, post, upload } from './api'
 
 /* --- authentication & session ------------------------------------------- */
 export const authApi = {
-  login: (email, password, mfaCode) => post('/auth/login', { email, password, ...(mfaCode ? { mfa_code: mfaCode } : {}) }),
   mfaStatus: () => get('/auth/mfa/status'),
   mfaEnable: () => post('/auth/mfa/enable'),
   mfaConfirm: (code) => post('/auth/mfa/confirm', { code }),
   mfaDisable: (code) => post('/auth/mfa/disable', { code }),
-  register: (payload) => post('/auth/register', payload),
-  logout: () => post('/auth/logout'),
   me: () => get('/auth/me'),
   roles: () => get('/auth/roles'),
   changePassword: (payload) => post('/auth/change-password', payload),
