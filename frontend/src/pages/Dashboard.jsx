@@ -10,13 +10,11 @@ import {
   Gauge,
   Layers,
   Lock,
-  LogIn,
   Network,
   Radar,
   RefreshCw,
   Server,
   ShieldAlert,
-  ShieldHalf,
   Siren,
   Users,
   Zap,
@@ -46,7 +44,7 @@ import { compactNumber, formatAxisTime, formatBytes, formatNumber, formatPercent
 import { attackColor, severityColor } from '../utils/theme'
 
 export default function Dashboard() {
-  const { can, isAuthenticated } = useAuth()
+  const { can } = useAuth()
   const navigate = useNavigate()
   const { connected, events } = useRealtime()
   const [liveAlerts, setLiveAlerts] = useState([])
@@ -103,26 +101,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4">
-      {/* guest banner - the dashboard is public, signing in is optional */}
-      {!isAuthenticated ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-500/30 bg-cyan-500/8 px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-cyan-500/40 bg-cyan-500/10">
-              <ShieldHalf size={15} className="text-cyan-300" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-slate-100">You&rsquo;re viewing the live Command Center as a guest</p>
-              <p className="muted mt-0.5 text-[11px]">Sign in to run detections and forecasts, triage alerts and unlock the full workspace.</p>
-            </div>
-          </div>
-          <Link to="/login" className="shrink-0">
-            <Button size="sm" variant="primary" icon={LogIn}>
-              Sign in
-            </Button>
-          </Link>
-        </div>
-      ) : null}
-
       {/* provenance + refresh */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">

@@ -14,7 +14,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import settings
-from app.security.rbac import normalize_role, role_can
+from app.security.rbac import capabilities_for_role, normalize_role, role_can
 from app.security.tokens import decode_access_token
 from app.services import auth_service
 from app.storage import get_store
@@ -56,14 +56,47 @@ def get_optional_user(token: Optional[str] = Depends(get_token)) -> Optional[Dic
     return None
 
 
-def get_current_user(user: Optional[Dict[str, Any]] = Depends(get_optional_user)) -> Dict[str, Any]:
-    if not user:
+def default_user() -> Dict[str, Any]:
+    """
+    Synthetic full-access operator used when the platform runs without login.
+
+    The whole SOC workspace is intentionally usable anonymously, so any request
+    that carries no bearer token is treated as this operator. It holds the
+    ``admin`` role (hence every capability) purely so the existing permission
+    matrix keeps working unchanged; it is not a real account and never touches
+    the user store.
+    """
+    return {
+        "id": "operator",
+        "email": "operator@cyberforecast.local",
+        "name": "Operator",
+        "role": "admin",
+        "capabilities": capabilities_for_role("admin"),
+        "is_active": True,
+        "mfa_enabled": False,
+    }
+
+
+def get_current_user(
+    token: Optional[str] = Depends(get_token),
+    user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+) -> Dict[str, Any]:
+    """
+    Resolve the caller for a protected route.
+
+    No-login mode: a request with **no** bearer token resolves to the synthetic
+    full-access operator, so the entire platform is usable without signing in. A
+    token that *is* supplied but cannot be resolved (expired, malformed,
+    revoked) is still rejected with 401 - we open the door only to truly
+    anonymous visitors, never to callers presenting bad credentials.
+    """
+    if token and not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required. Provide a valid bearer token.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return user
+    return user or default_user()
 
 
 def require_role(*roles: str):
@@ -85,31 +118,6 @@ def require_capability(capability: str):
     """Dependency factory enforcing a named capability from the permission matrix."""
 
     def dependency(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
-        if not role_can(normalize_role(user.get("role")), capability):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Your role ('{user.get('role')}') is not permitted to perform '{capability}'.",
-            )
-        return user
-
-    return dependency
-
-
-def require_capability_or_guest(capability: str):
-    """
-    Read-only dependency for publicly viewable endpoints.
-
-    An unauthenticated guest (no bearer token) is allowed through so public
-    pages - e.g. the SOC Command Center that greets every visitor - can render
-    real, read-only data without a session. A signed-in caller is still held to
-    the permission matrix and receives a 403 if their role lacks `capability`.
-
-    Returns the resolved user, or ``None`` for a guest.
-    """
-
-    def dependency(user: Optional[Dict[str, Any]] = Depends(get_optional_user)) -> Optional[Dict[str, Any]]:
-        if user is None:
-            return None
         if not role_can(normalize_role(user.get("role")), capability):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

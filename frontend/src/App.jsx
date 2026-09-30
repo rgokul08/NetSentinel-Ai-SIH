@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import { ShieldAlert } from 'lucide-react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { RealtimeProvider } from './context/RealtimeContext'
@@ -32,19 +32,11 @@ function PageFallback() {
   return <LoadingState label="Loading workspace…" className="py-24" />
 }
 
-/** Redirects unauthenticated visitors to /login, remembering where they came from. */
-function RequireAuth({ children }) {
-  const { isAuthenticated, initializing } = useAuth()
-  const location = useLocation()
-
-  if (initializing) return <LoadingState label="Restoring session…" className="py-24" />
-  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location.pathname }} />
-  return children
-}
-
 /**
  * Capability gate. Rather than silently hiding a page (which looks broken), it
  * renders an explicit "not permitted" panel - the API enforces the same rule.
+ * In the default no-login mode the operator holds every capability, so this is
+ * only reached by a real, lower-privileged signed-in session.
  */
 function RequireCapability({ capability, title, children }) {
   const { can, role } = useAuth()
@@ -74,53 +66,45 @@ function Workspace() {
     <RealtimeProvider>
       <Routes>
         <Route element={<AppLayout />}>
-          {/* Public landing page: the Command Center dashboard is readable by
-              guests with no session. Every other workspace page requires auth
-              and redirects to /login, remembering where the visitor was headed. */}
+          {/* No-login mode: every page is directly reachable - no auth gate. */}
           <Route index element={<Dashboard />} />
-          <Route path="analytics" element={<RequireAuth><Analytics /></RequireAuth>} />
-          <Route path="timeline" element={<RequireAuth><Timeline /></RequireAuth>} />
-          <Route path="threat-map" element={<RequireAuth><ThreatMap /></RequireAuth>} />
-          <Route path="traffic" element={<RequireAuth><Traffic /></RequireAuth>} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="timeline" element={<Timeline />} />
+          <Route path="threat-map" element={<ThreatMap />} />
+          <Route path="traffic" element={<Traffic />} />
           <Route
             path="detection"
             element={
-              <RequireAuth>
-                <RequireCapability capability="predict.run" title="Detection Lab requires analyst access">
-                  <Detection />
-                </RequireCapability>
-              </RequireAuth>
+              <RequireCapability capability="predict.run" title="Detection Lab requires analyst access">
+                <Detection />
+              </RequireCapability>
             }
           />
-          <Route path="forecast" element={<RequireAuth><Forecast /></RequireAuth>} />
-          <Route path="alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
-          <Route path="reports" element={<RequireAuth><Reports /></RequireAuth>} />
-          <Route path="models" element={<RequireAuth><Models /></RequireAuth>} />
-          <Route path="datasets" element={<RequireAuth><Datasets /></RequireAuth>} />
-          <Route path="blockchain" element={<RequireAuth><Blockchain /></RequireAuth>} />
-          <Route path="simulation" element={<RequireAuth><Simulation /></RequireAuth>} />
+          <Route path="forecast" element={<Forecast />} />
+          <Route path="alerts" element={<Alerts />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="models" element={<Models />} />
+          <Route path="datasets" element={<Datasets />} />
+          <Route path="blockchain" element={<Blockchain />} />
+          <Route path="simulation" element={<Simulation />} />
           <Route
             path="audit"
             element={
-              <RequireAuth>
-                <RequireCapability capability="audit.view" title="Audit logs are restricted to administrators">
-                  <AuditLog />
-                </RequireCapability>
-              </RequireAuth>
+              <RequireCapability capability="audit.view" title="Audit logs are restricted to administrators">
+                <AuditLog />
+              </RequireCapability>
             }
           />
           <Route
             path="admin"
             element={
-              <RequireAuth>
-                <RequireCapability capability="users.manage" title="The admin console is restricted to administrators">
-                  <Admin />
-                </RequireCapability>
-              </RequireAuth>
+              <RequireCapability capability="users.manage" title="The admin console is restricted to administrators">
+                <Admin />
+              </RequireCapability>
             }
           />
-          <Route path="settings" element={<RequireAuth><Settings /></RequireAuth>} />
-          <Route path="*" element={<RequireAuth><NotFound /></RequireAuth>} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </RealtimeProvider>
@@ -135,8 +119,6 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            {/* The workspace shell (and its public Command Center landing page)
-                renders for everyone; individual pages opt into auth themselves. */}
             <Route path="/*" element={<Workspace />} />
           </Routes>
         </Suspense>

@@ -6,22 +6,27 @@ import { onUnauthorized, storage } from '../services/api'
 const AuthContext = createContext(null)
 
 /**
- * Capabilities granted to a not-signed-in guest. The Command Center dashboard
- * is the public landing page, so guests may open it (and only it) without a
- * session; every other workspace still requires sign-in and is enforced
- * server-side. Kept intentionally tiny - just the landing dashboard.
+ * The platform runs without sign-in: every visitor is treated as a full-access
+ * operator. A real session restored from storage (if one ever exists) still
+ * takes precedence and is honoured with its own role and capabilities.
  */
-const GUEST_CAPABILITIES = ['dashboard.view']
+const DEFAULT_OPERATOR = {
+  id: 'operator',
+  name: 'Operator',
+  email: 'operator@cyberforecast.local',
+  role: 'admin',
+  fullAccess: true,
+}
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => storage.getUser())
+  const [user, setUser] = useState(() => storage.getUser() || DEFAULT_OPERATOR)
   const [token, setToken] = useState(() => storage.getToken())
   const [initializing, setInitializing] = useState(Boolean(storage.getToken()))
   const navigate = useNavigate()
 
   const persist = useCallback((nextToken, nextUser) => {
     setToken(nextToken || null)
-    setUser(nextUser || null)
+    setUser(nextUser || DEFAULT_OPERATOR)
     if (nextToken) storage.setSession(nextToken, nextUser)
     else storage.clear()
   }, [])
@@ -104,7 +109,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   const capabilities = useMemo(() => new Set(user?.capabilities || []), [user])
-  const isAuthenticated = Boolean(token && user)
+  const isAuthenticated = Boolean(user)
 
   const value = useMemo(
     () => ({
@@ -115,12 +120,11 @@ export function AuthProvider({ children }) {
       role: user?.role || null,
       capabilities,
       /**
-       * Mirrors the backend permission matrix - UI convenience only, never trust.
-       * A not-signed-in guest is treated as a minimal read-only visitor so the
-       * public Command Center landing page renders; every other workspace page
-       * stays behind <RequireAuth> and the API still enforces the real rule.
+       * UI convenience only, never a security boundary - the API enforces the
+       * real rule. The default no-login operator has full access, so every
+       * control is available; a real signed-in session uses its own capabilities.
        */
-      can: (capability) => (isAuthenticated ? capabilities.has(capability) : GUEST_CAPABILITIES.includes(capability)),
+      can: (capability) => (user?.fullAccess ? true : capabilities.has(capability)),
       hasRole: (...roles) => roles.includes(user?.role),
       login,
       register,
