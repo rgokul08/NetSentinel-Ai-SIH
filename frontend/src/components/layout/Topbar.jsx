@@ -1,4 +1,4 @@
-import { ChevronDown, LogOut, Menu, Radio, RefreshCw, UserCog, Wifi, WifiOff } from 'lucide-react'
+import { ChevronDown, LogIn, LogOut, Menu, Radio, RefreshCw, UserCog, Wifi, WifiOff } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
@@ -37,7 +37,7 @@ function useLivePosture() {
 }
 
 export default function Topbar({ onMenu }) {
-  const { user, logout } = useAuth()
+  const { user, logout, isAuthenticated } = useAuth()
   const { status, connected, messageCount } = useRealtime()
   const navigate = useNavigate()
   const location = useLocation()
@@ -112,66 +112,76 @@ export default function Topbar({ onMenu }) {
             <span className="hidden sm:inline">{connected ? 'Live' : status === 'connecting' ? 'Connecting' : 'Offline'}</span>
           </span>
 
-          {/* account menu */}
-          <div className="relative" ref={menuRef}>
-            <button
-              type="button"
-              onClick={() => setMenuOpen((open) => !open)}
-              className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-left transition hover:border-slate-700"
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-cyan-500/15 text-[10px] font-bold text-cyan-300">
-                {String(user?.name || user?.email || '?')
-                  .split(/\s+/)
-                  .slice(0, 2)
-                  .map((part) => part[0]?.toUpperCase())
-                  .join('')}
-              </span>
-              <span className="hidden leading-tight sm:block">
-                <span className="block max-w-[120px] truncate text-[11px] font-semibold text-slate-200">{user?.name || 'Analyst'}</span>
-                <span className="mono block text-[9px] uppercase tracking-wide text-slate-500">{user?.role}</span>
-              </span>
-              <ChevronDown size={13} className="text-slate-500" />
-            </button>
+          {/* account menu when signed in; optional Sign in when browsing as a guest */}
+          {isAuthenticated ? (
+            <div className="relative" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((open) => !open)}
+                className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-left transition hover:border-slate-700"
+              >
+                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-cyan-500/15 text-[10px] font-bold text-cyan-300">
+                  {String(user?.name || user?.email || '?')
+                    .split(/\s+/)
+                    .slice(0, 2)
+                    .map((part) => part[0]?.toUpperCase())
+                    .join('')}
+                </span>
+                <span className="hidden leading-tight sm:block">
+                  <span className="block max-w-[120px] truncate text-[11px] font-semibold text-slate-200">{user?.name || 'Analyst'}</span>
+                  <span className="mono block text-[9px] uppercase tracking-wide text-slate-500">{user?.role}</span>
+                </span>
+                <ChevronDown size={13} className="text-slate-500" />
+              </button>
 
-            {menuOpen ? (
-              <div className="animate-in-fast absolute right-0 top-[calc(100%+6px)] w-60 overflow-hidden rounded-xl border border-slate-700/70 bg-slate-900 shadow-2xl">
-                <div className="border-b border-slate-800 px-3 py-2.5">
-                  <p className="truncate text-xs font-semibold text-slate-100">{user?.name}</p>
-                  <p className="mono truncate text-[10px] text-slate-500">{user?.email}</p>
-                  <p className="mt-1.5">
-                    <span className="badge border-cyan-500/40 bg-cyan-500/10 text-cyan-300">{user?.role}</span>
-                  </p>
+              {menuOpen ? (
+                <div className="animate-in-fast absolute right-0 top-[calc(100%+6px)] w-60 overflow-hidden rounded-xl border border-slate-700/70 bg-slate-900 shadow-2xl">
+                  <div className="border-b border-slate-800 px-3 py-2.5">
+                    <p className="truncate text-xs font-semibold text-slate-100">{user?.name}</p>
+                    <p className="mono truncate text-[10px] text-slate-500">{user?.email}</p>
+                    <p className="mt-1.5">
+                      <span className="badge border-cyan-500/40 bg-cyan-500/10 text-cyan-300">{user?.role}</span>
+                    </p>
+                  </div>
+                  <div className="p-1">
+                    <Link
+                      to="/settings"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                    >
+                      <UserCog size={13} /> Profile & system settings
+                    </Link>
+                    <Link
+                      to="/admin"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                    >
+                      <RefreshCw size={13} /> Admin console
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        logout()
+                        navigate('/login', { replace: true })
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-rose-300 transition hover:bg-rose-500/10"
+                    >
+                      <LogOut size={13} /> Sign out
+                    </button>
+                  </div>
                 </div>
-                <div className="p-1">
-                  <Link
-                    to="/settings"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-slate-300 transition hover:bg-slate-800 hover:text-white"
-                  >
-                    <UserCog size={13} /> Profile & system settings
-                  </Link>
-                  <Link
-                    to="/admin"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-slate-300 transition hover:bg-slate-800 hover:text-white"
-                  >
-                    <RefreshCw size={13} /> Admin console
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false)
-                      logout()
-                      navigate('/login', { replace: true })
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-rose-300 transition hover:bg-rose-500/10"
-                  >
-                    <LogOut size={13} /> Sign out
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </div>
+          ) : (
+            <Link
+              to="/login"
+              className="flex items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-cyan-300 transition hover:border-cyan-400/60 hover:bg-cyan-500/20 hover:text-cyan-100"
+              title="Sign in to unlock the full workspace"
+            >
+              <LogIn size={13} /> Sign in
+            </Link>
+          )}
         </div>
       </div>
     </header>

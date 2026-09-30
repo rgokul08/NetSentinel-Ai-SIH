@@ -5,6 +5,14 @@ import { onUnauthorized, storage } from '../services/api'
 
 const AuthContext = createContext(null)
 
+/**
+ * Capabilities granted to a not-signed-in guest. The Command Center dashboard
+ * is the public landing page, so guests may open it (and only it) without a
+ * session; every other workspace still requires sign-in and is enforced
+ * server-side. Kept intentionally tiny - just the landing dashboard.
+ */
+const GUEST_CAPABILITIES = ['dashboard.view']
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => storage.getUser())
   const [token, setToken] = useState(() => storage.getToken())
@@ -96,17 +104,23 @@ export function AuthProvider({ children }) {
   }, [])
 
   const capabilities = useMemo(() => new Set(user?.capabilities || []), [user])
+  const isAuthenticated = Boolean(token && user)
 
   const value = useMemo(
     () => ({
       user,
       token,
       initializing,
-      isAuthenticated: Boolean(token && user),
+      isAuthenticated,
       role: user?.role || null,
       capabilities,
-      /** Mirrors the backend permission matrix - UI convenience only, never trust. */
-      can: (capability) => capabilities.has(capability),
+      /**
+       * Mirrors the backend permission matrix - UI convenience only, never trust.
+       * A not-signed-in guest is treated as a minimal read-only visitor so the
+       * public Command Center landing page renders; every other workspace page
+       * stays behind <RequireAuth> and the API still enforces the real rule.
+       */
+      can: (capability) => (isAuthenticated ? capabilities.has(capability) : GUEST_CAPABILITIES.includes(capability)),
       hasRole: (...roles) => roles.includes(user?.role),
       login,
       register,
@@ -120,7 +134,7 @@ export function AuthProvider({ children }) {
         })
       },
     }),
-    [capabilities, initializing, login, logout, refresh, register, token, user],
+    [capabilities, initializing, isAuthenticated, login, logout, refresh, register, token, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

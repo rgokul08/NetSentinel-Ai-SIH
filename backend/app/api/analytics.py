@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Query
 
 from app.blockchain import ledger
-from app.security.deps import require_capability
+from app.security.deps import require_capability, require_capability_or_guest
 from app.services import (
     alert_service,
     analytics_service,
@@ -34,13 +34,19 @@ def trends(window: str = Query("24h"), bucket: Optional[str] = Query(None),
 
 @router.get("/top-entities")
 def top_entities(window: str = Query("24h"), limit: int = Query(10, ge=3, le=50),
-                 user: Dict[str, Any] = Depends(require_capability("analytics.view"))) -> Dict[str, Any]:
+                 user: Optional[Dict[str, Any]] = Depends(require_capability_or_guest("analytics.view"))) -> Dict[str, Any]:
     return analytics_service.top_entities(window, limit=limit)
 
 
 @router.get("/dashboard")
-def dashboard(window: str = Query("24h"), user: Dict[str, Any] = Depends(require_capability("analytics.view"))) -> Dict[str, Any]:
-    """Single call that feeds the whole SOC dashboard."""
+def dashboard(window: str = Query("24h"),
+              user: Optional[Dict[str, Any]] = Depends(require_capability_or_guest("analytics.view"))) -> Dict[str, Any]:
+    """Single call that feeds the whole SOC dashboard.
+
+    Publicly readable (guest-friendly): this is the landing page every visitor
+    sees, so it resolves an optional user and never requires a session. All the
+    data it aggregates is read-only; write/admin actions remain authenticated.
+    """
     overview_payload = analytics_service.overview(window)
     try:
         forecast = forecast_service.latest_run()

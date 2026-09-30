@@ -74,44 +74,53 @@ function Workspace() {
     <RealtimeProvider>
       <Routes>
         <Route element={<AppLayout />}>
+          {/* Public landing page: the Command Center dashboard is readable by
+              guests with no session. Every other workspace page requires auth
+              and redirects to /login, remembering where the visitor was headed. */}
           <Route index element={<Dashboard />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="timeline" element={<Timeline />} />
-          <Route path="threat-map" element={<ThreatMap />} />
-          <Route path="traffic" element={<Traffic />} />
+          <Route path="analytics" element={<RequireAuth><Analytics /></RequireAuth>} />
+          <Route path="timeline" element={<RequireAuth><Timeline /></RequireAuth>} />
+          <Route path="threat-map" element={<RequireAuth><ThreatMap /></RequireAuth>} />
+          <Route path="traffic" element={<RequireAuth><Traffic /></RequireAuth>} />
           <Route
             path="detection"
             element={
-              <RequireCapability capability="predict.run" title="Detection Lab requires analyst access">
-                <Detection />
-              </RequireCapability>
+              <RequireAuth>
+                <RequireCapability capability="predict.run" title="Detection Lab requires analyst access">
+                  <Detection />
+                </RequireCapability>
+              </RequireAuth>
             }
           />
-          <Route path="forecast" element={<Forecast />} />
-          <Route path="alerts" element={<Alerts />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="models" element={<Models />} />
-          <Route path="datasets" element={<Datasets />} />
-          <Route path="blockchain" element={<Blockchain />} />
-          <Route path="simulation" element={<Simulation />} />
+          <Route path="forecast" element={<RequireAuth><Forecast /></RequireAuth>} />
+          <Route path="alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
+          <Route path="reports" element={<RequireAuth><Reports /></RequireAuth>} />
+          <Route path="models" element={<RequireAuth><Models /></RequireAuth>} />
+          <Route path="datasets" element={<RequireAuth><Datasets /></RequireAuth>} />
+          <Route path="blockchain" element={<RequireAuth><Blockchain /></RequireAuth>} />
+          <Route path="simulation" element={<RequireAuth><Simulation /></RequireAuth>} />
           <Route
             path="audit"
             element={
-              <RequireCapability capability="audit.view" title="Audit logs are restricted to administrators">
-                <AuditLog />
-              </RequireCapability>
+              <RequireAuth>
+                <RequireCapability capability="audit.view" title="Audit logs are restricted to administrators">
+                  <AuditLog />
+                </RequireCapability>
+              </RequireAuth>
             }
           />
           <Route
             path="admin"
             element={
-              <RequireCapability capability="users.manage" title="The admin console is restricted to administrators">
-                <Admin />
-              </RequireCapability>
+              <RequireAuth>
+                <RequireCapability capability="users.manage" title="The admin console is restricted to administrators">
+                  <Admin />
+                </RequireCapability>
+              </RequireAuth>
             }
           />
-          <Route path="settings" element={<Settings />} />
-          <Route path="*" element={<NotFound />} />
+          <Route path="settings" element={<RequireAuth><Settings /></RequireAuth>} />
+          <Route path="*" element={<RequireAuth><NotFound /></RequireAuth>} />
         </Route>
       </Routes>
     </RealtimeProvider>
@@ -126,14 +135,9 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route
-              path="/*"
-              element={
-                <RequireAuth>
-                  <Workspace />
-                </RequireAuth>
-              }
-            />
+            {/* The workspace shell (and its public Command Center landing page)
+                renders for everyone; individual pages opt into auth themselves. */}
+            <Route path="/*" element={<Workspace />} />
           </Routes>
         </Suspense>
       </AuthProvider>

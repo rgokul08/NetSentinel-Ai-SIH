@@ -91,6 +91,20 @@ def test_protected_routes_require_a_token(client):
         assert client.get(path).status_code == 401, path
 
 
+def test_public_dashboard_is_readable_by_guests(client):
+    """The Command Center is the public landing page: guests (no token) can read
+    the dashboard aggregate and its top-entities feed, while the finer-grained
+    analytics endpoints stay behind authentication."""
+    for path in ("/api/analytics/dashboard", "/api/analytics/top-entities"):
+        response = client.get(path)
+        assert response.status_code == 200, f"{path} -> {response.status_code} {response.text[:200]}"
+        assert response.json()
+
+    # The rest of /analytics is still token-gated.
+    for path in ("/api/analytics/overview", "/api/analytics/trends?window=24h"):
+        assert client.get(path).status_code == 401, path
+
+
 def test_invalid_tokens_are_rejected(client):
     for header in ("Bearer not-a-token", "Bearer a.b.c", "Token abc", ""):
         response = client.get("/api/auth/me", headers={"Authorization": header})

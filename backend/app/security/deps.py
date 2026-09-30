@@ -95,6 +95,31 @@ def require_capability(capability: str):
     return dependency
 
 
+def require_capability_or_guest(capability: str):
+    """
+    Read-only dependency for publicly viewable endpoints.
+
+    An unauthenticated guest (no bearer token) is allowed through so public
+    pages - e.g. the SOC Command Center that greets every visitor - can render
+    real, read-only data without a session. A signed-in caller is still held to
+    the permission matrix and receives a 403 if their role lacks `capability`.
+
+    Returns the resolved user, or ``None`` for a guest.
+    """
+
+    def dependency(user: Optional[Dict[str, Any]] = Depends(get_optional_user)) -> Optional[Dict[str, Any]]:
+        if user is None:
+            return None
+        if not role_can(normalize_role(user.get("role")), capability):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Your role ('{user.get('role')}') is not permitted to perform '{capability}'.",
+            )
+        return user
+
+    return dependency
+
+
 def client_ip(request: Request) -> str:
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
